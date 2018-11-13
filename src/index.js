@@ -1,31 +1,15 @@
-import React, { useState, useEffect } from "react";
-
+import React, { useState, Suspense } from "react";
 import ReactDOM from "react-dom";
+import { unstable_createResource as createResource } from "react-cache";
+import fetchMovies from "./fetch-movies";
+const myMovie = createResource(fetchMovies);
+function MovieInfo({ moiveName }) {
+  const movie = myMovie.read(moiveName);
+  return <pre>{JSON.stringify(movie || "Unknown", null, 2)}</pre>;
+}
 
 function App() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [results, setResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const debounceSearchTerm = useDebounce(searchTerm, 500);
-
-  useEffect(
-    () => {
-      if (debounceSearchTerm) {
-        setIsSearching(true);
-        searchMovie(debounceSearchTerm).then(data => {
-          setIsSearching(false);
-
-          const filterResults = data.results.filter(r => r.vote_count > 10);
-          //data.results.map(r => r.title)
-          console.log("data..", filterResults);
-          setResults(filterResults);
-        });
-      } else {
-        setResults([]);
-      }
-    },
-    [debounceSearchTerm]
-  );
 
   return (
     <div className="App">
@@ -33,44 +17,13 @@ function App() {
         placeholder="Search Movie"
         onChange={e => setSearchTerm(e.target.value)}
       />
-
-      {isSearching && <div>Searching Movies....</div>}
-      {results.map(data => (
-        <div key={data.id}>
-          <h4>{data.title}</h4>
-        </div>
-      ))}
+      {searchTerm ? (
+        <Suspense fallback={<div>loading...</div>}>
+          <MovieInfo moiveName={searchTerm} />
+        </Suspense>
+      ) : null}
     </div>
   );
-}
-
-function searchMovie(search) {
-  const apiKey = "fca5f943daa9668591efeb3151f1e923";
-  return fetch(
-    `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&language=en-US&query=${search}&page=1&include_adult=false`,
-    {
-      method: "GET"
-    }
-  ).then(r => r.json());
-}
-
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(
-    () => {
-      const handler = setTimeout(() => {
-        setDebouncedValue(value);
-      }, delay);
-
-      return () => {
-        clearTimeout(handler);
-      };
-    },
-    [value, delay]
-  );
-
-  return debouncedValue;
 }
 
 const rootElement = document.getElementById("root");
